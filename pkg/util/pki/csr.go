@@ -541,7 +541,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 		Version:      2, // X.509 v3
 		SerialNumber: template.SerialNumber,
 		SignatureAlgorithm: pkix.AlgorithmIdentifier{
-			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID (NIST draft)
+			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}, // ML-DSA-65 OID (FIPS 204)
 		},
 		Issuer:  asn1.RawValue{FullBytes: issuerBytes},
 		Subject: asn1.RawValue{FullBytes: subjectBytes},
@@ -552,7 +552,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 	tbsCert.Validity.NotAfter = template.NotAfter
 	
 	tbsCert.PublicKey.Algorithm = pkix.AlgorithmIdentifier{
-		Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID
+		Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}, // ML-DSA-65 OID (FIPS 204)
 	}
 	tbsCert.PublicKey.PublicKey = asn1.BitString{
 		Bytes:     pubKeyBytes,
@@ -579,7 +579,7 @@ func createMLDSACertificate(template *x509.Certificate, parent *x509.Certificate
 	}{
 		TBSCertificate: asn1.RawValue{FullBytes: tbsBytes},
 		SignatureAlgorithm: pkix.AlgorithmIdentifier{
-			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17},
+			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}, // ML-DSA-65 OID (FIPS 204)
 		},
 		SignatureValue: asn1.BitString{
 			Bytes:     signature,
@@ -773,7 +773,7 @@ func encodeMLDSA65CSR(template *x509.CertificateRequest, key *mldsa65.PrivateKey
 	
 	// SubjectPublicKeyInfo
 	pubKeyAlgBytes, err := asn1.Marshal(pkix.AlgorithmIdentifier{
-		Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17}, // ML-DSA-65 OID
+		Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}, // ML-DSA-65 OID (FIPS 204)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal public key algorithm: %w", err)

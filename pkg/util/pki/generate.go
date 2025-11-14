@@ -24,6 +24,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 
@@ -193,16 +195,31 @@ func EncodeECPrivateKey(pk *ecdsa.PrivateKey) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-// EncodeMLDSA65PrivateKey will marshal an ML-DSA-65 private key into PEM format.
-// ML-DSA keys are encoded as raw bytes in PKCS#8-style PEM format.
+// EncodeMLDSA65PrivateKey will marshal an ML-DSA-65 private key into PKCS#8 PEM format.
+// This encoding is compatible with OpenSSL and follows RFC 5208.
 func EncodeMLDSA65PrivateKey(pk *mldsa65.PrivateKey) ([]byte, error) {
-	//keyBytes := pk.Bytes()
-	//block := &pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes}
-	keyBytes, err := pk.MarshalBinary()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ML-DSA-65 private key: %w", err)
+	privKeyBytes := pk.Bytes()
+	
+	// Build PKCS#8 PrivateKeyInfo structure (OneAsymmetricKey from RFC 5208)
+	// This matches the OpenSSL format exactly
+	pkcs8Key := struct {
+		Version    int
+		Algorithm  pkix.AlgorithmIdentifier
+		PrivateKey []byte
+	}{
+		Version: 0,
+		Algorithm: pkix.AlgorithmIdentifier{
+			Algorithm: asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}, // ML-DSA-65 OID (FIPS 204)
+		},
+		PrivateKey: privKeyBytes,
 	}
-	block := &pem.Block{Type: "MLDSA65 PRIVATE KEY", Bytes: keyBytes}
+	
+	pkcs8Bytes, err := asn1.Marshal(pkcs8Key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal PKCS#8 private key: %w", err)
+	}
+	
+	block := &pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Bytes}
 	return pem.EncodeToMemory(block), nil
 }
 

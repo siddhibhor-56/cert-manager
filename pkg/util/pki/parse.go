@@ -19,6 +19,8 @@ package pki
 import (
 	"crypto"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	stdpem "encoding/pem"
 
 	"github.com/cert-manager/cert-manager/internal/pem"
@@ -47,11 +49,10 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 			return signer, nil
 		}
 
-		// If standard PKCS8 parsing fails, try ML-DSA-65
-		// ML-DSA keys are stored as raw bytes from PrivateKey.Bytes()
-		mldsaKey := new(mldsa65.PrivateKey)
-		if unmarshalErr := mldsaKey.UnmarshalBinary(block.Bytes); unmarshalErr == nil {
-			// Successfully parsed as ML-DSA key
+		// If standard PKCS8 parsing fails, try to parse as ML-DSA-65
+		// ML-DSA keys are encoded in PKCS#8 format with OID 2.16.840.1.101.3.4.3.18
+		mldsaKey, mldsaErr := parseMLDSAPKCS8PrivateKey(block.Bytes)
+		if mldsaErr == nil {
 			return mldsaKey, nil
 		}
 
@@ -87,6 +88,37 @@ func DecodePrivateKeyBytes(keyBytes []byte) (crypto.Signer, error) {
 	default:
 		return nil, errors.NewInvalidData("unknown private key type: %s", block.Type)
 	}
+}
+
+// parseMLDSAPKCS8PrivateKey parses a PKCS#8 encoded ML-DSA-65 private key.
+// The PKCS#8 structure contains the ML-DSA OID and the raw private key bytes.
+func parseMLDSAPKCS8PrivateKey(pkcs8Bytes []byte) (*mldsa65.PrivateKey, error) {
+	// Parse the PKCS#8 structure
+	var pkcs8 struct {
+		Version    int
+		Algo       pkix.AlgorithmIdentifier
+		PrivateKey []byte
+	}
+	
+	_, err := asn1.Unmarshal(pkcs8Bytes, &pkcs8)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Check if this is an ML-DSA-65 key (OID: 2.16.840.1.101.3.4.3.18)
+	mldsaOID := asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
+	if !pkcs8.Algo.Algorithm.Equal(mldsaOID) {
+		return nil, errors.NewInvalidData("not an ML-DSA-65 private key")
+	}
+	
+	// Create ML-DSA key from the raw bytes
+	key := new(mldsa65.PrivateKey)
+	err = key.UnmarshalBinary(pkcs8.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	
+	return key, nil
 }
 
 func decodeMultipleCerts(certBytes []byte, decodeFn func([]byte) (*stdpem.Block, []byte, error)) ([]*x509.Certificate, error) {
