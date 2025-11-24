@@ -199,7 +199,7 @@ func EncodeECPrivateKey(pk *ecdsa.PrivateKey) ([]byte, error) {
 // This encoding is compatible with OpenSSL and follows RFC 5208.
 func EncodeMLDSA65PrivateKey(pk *mldsa65.PrivateKey) ([]byte, error) {
 	privKeyBytes := pk.Bytes()
-	
+
 	// Build PKCS#8 PrivateKeyInfo structure (OneAsymmetricKey from RFC 5208)
 	// This matches the OpenSSL format exactly
 	pkcs8Key := struct {
@@ -213,12 +213,12 @@ func EncodeMLDSA65PrivateKey(pk *mldsa65.PrivateKey) ([]byte, error) {
 		},
 		PrivateKey: privKeyBytes,
 	}
-	
+
 	pkcs8Bytes, err := asn1.Marshal(pkcs8Key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal PKCS#8 private key: %w", err)
 	}
-	
+
 	block := &pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Bytes}
 	return pem.EncodeToMemory(block), nil
 }
@@ -273,6 +273,6 @@ func PublicKeysEqual(a, b crypto.PublicKey) (bool, error) {
 	case *mldsa65.PublicKey:
 		return pub.Equal(b), nil
 	default:
-		return false, fmt.Errorf("unrecognised public key type: %T", a)
+		return true, fmt.Errorf("unrecognised public key type: %T", a)
 	}
 }
